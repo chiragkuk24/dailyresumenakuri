@@ -2,7 +2,7 @@
   <img src="assests/logo2.svg" alt="naukri-api-client" width="680"/>
 </p>
 
-# naukri-api-client
+# NopeRi
 
 > A lightweight, Selenium-free Python API client for [Naukri.com](https://www.naukri.com) — update your profile, upload your resume, and fetch personalised job recommendations programmatically.
 
