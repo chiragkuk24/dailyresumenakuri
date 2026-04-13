@@ -4,7 +4,7 @@
 
 # Noperi
 
-A lightweight and Selenium-free Python API client for Naukri.com, designed to help you update your profile, upload your resume, and retrieve personalized job recommendations programmatically.
+A lightweight and Selenium-free Python API client for Naukri.com, designed to help you update your profile, upload your resume, search jobs, and apply to jobs (easy apply) programmatically.
 
 ---
 
@@ -21,9 +21,15 @@ A lightweight and Selenium-free Python API client for Naukri.com, designed to he
 | Profile update (headline, name, summary) | ✅ Working |
 | Recommended jobs feed | ✅ Working |
 | `nkparam` token harvester (Selenium utility) | ✅ Working |
-| Job search (`/jobapi/v3/search`) | 🚧 Under development |
+| `nkparam` token generator (pure API, no Selenium) | ✅ Working |
+| Job search (`/jobapi/v3/search`) | ✅ Working |
+| One-click job apply | ✅ Working |
 | OTP login/MFA | 🚧 Under development |
-| One-click job apply | 🚧 Under development |
+
+> **Updated on April 13 2026**  
+> **No Selenium required** for core features.  
+> The `nkparam` token is generated via API.  
+> Selenium-based harvester is kept only as a backup utility.
 
 > **No Selenium required** for features 1–4. The Selenium script is only needed as a helper to harvest fresh `nkparam` tokens for the search endpoint.
 
@@ -50,7 +56,8 @@ naukri-api-client/
 │   └── utils/
 │       ├── extractors.py       # HTML / JS parsing helpers
 │       └── request_helper.py   # Exponential-retry decorator
-        ├── get_Nkparam.py          # Selenium helper to harvest nkparam tokens
+        ├── get_Nkparam.py      # Selenium helper to harvest nkparam tokens
+        ├── nkparam_generator.py   #generate nkparam tokens 
 ```
 
 ---
@@ -96,37 +103,71 @@ PASSWORD=your_naukri_password
 ```
 
 ---
-
 ## 🚀 Quick Start 
-you can simply run  main.py also
+        you can simply run `main.py` also
 
-```python
-from src.client.naukri_client import NaukriLoginClient
-from src.client.job_client import NaukriJobClient
-from dotenv import load_dotenv
-import os
+        ```python
+        from src.client.naukri_client import NaukriLoginClient
+        from src.client.job_client import NaukriJobClient
+        from dotenv import load_dotenv
+        import os
+        import time
 
-load_dotenv()
+        load_dotenv()
 
-# 1. Login
-client = NaukriLoginClient(os.getenv("USERNAME"), os.getenv("PASSWORD"))
-client.login()
+        # 1. Login
+        client = NaukriLoginClient(os.getenv("USERNAME"), os.getenv("PASSWORD"))
+        client.login()
 
-# 2. Upload resume
-client.update_resume("path/to/your_resume.pdf")
+        # 2. Upload resume
+        client.update_resume("path/to/your_resume.pdf")
 
-# 3. Update profile headline
-client.update_profile(headline="Backend Engineer | Python · Node.js · AWS")
+        # 3. Update profile headline
+        client.update_profile(headline="Backend Engineer | Python · Node.js · AWS")
 
-# 4. Update profile summary
-client.update_profile(summary="Experienced engineer with 2+ years building scalable APIs.")
+        # 4. Update profile summary
+        client.update_profile(summary="Experienced engineer with 2+ years building scalable APIs.")
 
-# 5. Fetch recommended jobs
-jc = NaukriJobClient(client)
-jobs = jc.get_recommended_jobs()
-for job in jobs:
-    print(job.title, "—", job.company, "|", job.location)
-```
+        # 5. Job client
+        jc = NaukriJobClient(client)
+
+        # 6. Fetch recommended jobs
+        jobs = jc.get_recommended_jobs()
+        for job in jobs:
+            print(job.title, "—", job.company)
+
+        # 7. Search jobs
+        jobs = jc.search_jobs(keyword="Node.js developer", location="Hyderabad", experience=2)
+
+        # 8. Apply to jobs (easy apply)
+        for job in jobs:
+            mandatory = job.tags[:2] if job.tags else []
+            optional  = job.tags[2:] if len(job.tags) > 2 else []
+
+            try:
+                result = jc.apply_job(
+                    job,
+                    mandatory_skills=mandatory,
+                    optional_skills=optional,
+                    source="recommended"
+                )
+
+                job_result = (result.get("jobs") or [{}])[0]
+
+                # Skip jobs with questionnaire
+                if job_result.get("questionnaire"):
+                    print("Skipped (questionnaire required):", job.title)
+                    continue
+
+                print("Applied:", job.title)
+
+            except Exception as e:
+                print("Failed:", job.title, "|", e)
+
+            time.sleep(2)
+
+
+
 
 ---
 
@@ -147,8 +188,8 @@ for job in jobs:
 | Method | Description |
 |---|---|
 | `get_recommended_jobs()` | Returns a list of `Job` objects personalised to your profile |
-| `search_jobs(keyword, location, page, experience, ...)` | 🚧 Job search — under development (see note below) |
-| `apply_job(job)` | 🚧 Apply to a job — under development |
+| `search_jobs(keyword, location, page, experience, ...)` | Returns job results using the search endpoint |
+| `apply_job(job)` | Applies to a job programmatically |
 
 ### `Job` model
 
@@ -171,17 +212,45 @@ class Job:
 
 ## 🔑 The `nkparam` Problem (and Current Solution)
 
-Naukri's job-search endpoint (`/jobapi/v3/search`) requires a request header called `nkparam` — a signed token generated inside Naukri's obfuscated JavaScript bundle that changes with each browser session. Without a valid token the API returns `403 Forbidden`.
+Naukri's job-search endpoint (`/jobapi/v3/search`) requires a request header called `nkparam`.  
+This is not just a random token — it is essentially an **encrypted/signature key** generated using:
+- current timestamp (time-based salt)
+- session-related data
+- page/context-specific parameters
 
-**Current workaround — `get_Nkparam.py`:**  
-A Selenium script that opens a real Chrome browser, navigates to a Naukri search page, intercepts the outgoing network request via Chrome's performance logs, and appends the captured `nkparam` value to `nkPool.txt`. The job client rotates through this pool at runtime.
+The logic exists inside Naukri’s obfuscated JavaScript bundle, which makes it hard to reverse directly.
+
+If `nkparam` is missing or invalid, the API returns `403 Forbidden`.
+
+---
+
+### ✅ Current Solution
+
+We now generate `nkparam` directly via API logic (no browser required).
+
+- Reverse-engineered structure of the token
+- Recreated the encryption/signing flow
+- Dynamically generates valid `nkparam` per request
+
+This removes the dependency on Selenium and makes the system:
+- faster
+- more stable
+- fully scriptable
+
+---
+
+### 🧰 Fallback (Optional)
+
+A Selenium-based harvester is still available as a backup:
+
+**`nk_param_getter.py`**
+- Opens Chrome
+- Captures network requests
+- Extracts valid `nkparam`
+- Stores in `nkPool.txt`
 
 ```bash
-python nk_param_getter.py   # Run once to populate nkPool.txt, Ctrl+C to stop
-```
-
-**Ongoing work:** Reverse-engineering how Naukri computes `nkparam` directly from the JS bundle so that the Selenium dependency can be eliminated entirely for search as well.
-
+python nk_param_getter.py   # Optional fallback, Ctrl+C to stop
 ---
 
 ## 🤖 Using Recommended Jobs as an Agent Feed
@@ -213,9 +282,10 @@ This project is intended for personal automation of your **own** Naukri account.
 
 ## 🛣️ Roadmap
 
-- [ ] Reverse-engineer `nkparam` generation to remove Selenium dependency for search
-- [ ] Complete job-search endpoint integration
-- [ ] Complete one-click job-apply flow
+- [x] Reverse-engineer `nkparam` generation (no Selenium dependency)
+- [x] Complete job-search endpoint integration
+- [x] Complete one-click job-apply flow
+- [ ] Implement OTP/MFA login automation
 - [ ] Add async support (`httpx` / `aiohttp`)
 - [ ] CLI interface
 
@@ -223,6 +293,6 @@ This project is intended for personal automation of your **own** Naukri account.
 
 ## 🤝 Contributing
 
-Pull requests are welcome! If you crack the `nkparam` generation algorithm, please open an issue or PR — it is the last missing piece for a fully Selenium-free client.
-
+    Pull requests are welcome!
+    If you can help implement or improve OTP/MFA login automation, feel free to open an issue or PR  this is the main remaining piece for a fully seamless client.
 ---
