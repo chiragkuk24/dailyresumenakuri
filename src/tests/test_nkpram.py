@@ -1,12 +1,17 @@
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_v1_5
 import base64
-import os
-'''Experimental nkparam generatin, working on this currently '''
-def generate_nkparam() -> str:
-    """Generate a random nkparam that looks like the real one (64 random bytes -> 88 char base64)"""
-    return base64.b64encode(os.urandom(64)).decode()
+import time
+from concurrent.futures import ThreadPoolExecutor
+PUBLIC_KEY="search"
+key = RSA.import_key(PUBLIC_KEY)
+cipher = PKCS1_v1_5.new(key)
+def generate_nkparam(page_type: str = "srp") -> str:
+    timestamp = int(time.time() * 1000)
+    plaintext = f"v0|{timestamp}|121_{page_type}"
+    
 
-# test
-val = generate_nkparam()
-print(len(val))   # 8
-print(val) 
-#
+    encrypted = cipher.encrypt(plaintext.encode('utf-8'))
+    
+    return base64.b64encode(encrypted).decode('utf-8')
+
