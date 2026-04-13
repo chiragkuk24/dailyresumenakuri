@@ -80,6 +80,19 @@ UPLOAD_HEADERS = {
     "systemid": "fileupload",
 }
 
+OTP_HEADERS = {
+  "accept": "application/json",
+  "appid": "100",
+  "content-type": "application/json",
+  "referer": "https://www.naukri.com/nlogin/login?URL=//www.naukri.com/mnjuser/recommendedjobs",
+  "sec-ch-ua": "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Google Chrome\";v=\"146\"",
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": "\"Windows\"",
+  "systemid": "jobseeker",
+  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+  "x-requested-with": "XMLHttpRequest"
+}
+
 # ---------------------------------------------------------------------------
 # Client
 # ---------------------------------------------------------------------------
@@ -141,6 +154,115 @@ class NaukriLoginClient:
     # ------------------------------------------------------------------
     # form_key helpers
     # ------------------------------------------------------------------
+ 
+
+
+
+    @with_exponential_retry(label="verify_otp")
+    def _verify_otp_request(self, username: str, otp: str, is_mobile: bool):
+        payload = {
+            "username": username,
+            "token": otp,
+            "mobile": username,
+            "flowId": "login",
+            "isLoginByEmail": not is_mobile,
+            "isLoginByMobile": is_mobile,
+        }
+        return self.session.post(
+            OTP_VERIFY_URL,
+            headers=OTP_HEADERS,
+            json=payload,
+        )
+
+    def verify_otp(self, otp: str, username: str = None, is_mobile: bool = True):
+        """
+        Verify an OTP challenge issued by Naukri during login.
+
+        Args:
+            otp:        The 6-digit OTP received via SMS/email.
+            username:   Phone number (if is_mobile=True) or email. Defaults
+                        to the username supplied at client construction.
+            is_mobile:  True if username is a mobile number (default),
+                        False for email-based OTP.
+
+        Returns:
+            NaukriSession with the bearer token extracted from cookies.
+
+        Raises:
+            NaukriAuthError: On HTTP error or missing token in response.
+        """
+        target = username or self.username
+        res = self._verify_otp_request(target, otp, is_mobile)
+
+        if not res.ok:
+            logger.error("OTP verification failed: %s %s", res.status_code, res.text)
+            raise NaukriAuthError(f"OTP verification failed ({res.status_code})")
+
+        token = self.session.cookies.get("nauk_at")
+        if not token:
+            # Some flows return the token in the JSON body instead
+            try:
+                token = res.json().get("authToken") or res.json().get("token")
+            except Exception:
+                pass
+
+        if not token:
+            raise NaukriAuthError("OTP verified but no auth token received")
+
+        self.naukri_session = NaukriSession(token, self.session.cookies)
+
+        try:
+            self.cache["form_key"] = self.get_form_key2()
+        except Exception:
+            pass
+
+        return self.naukri_session
+
+
+    @with_exponential_retry(label="send_otp")
+    def _send_otp_request(self, username: str, is_mobile: bool):
+        payload = {
+            "username": username,
+            "flowId": "login",
+            "isLoginByEmail": not is_mobile,
+            "isLoginByMobile": is_mobile,
+        }
+        otp_header=self._build_headers()
+        otp_header["appid"]="100"
+        return self.session.post(
+            OTP_SEND_URL,
+            headers=otp_header,
+            json=payload,
+        )
+
+    def send_otp(self, username: str = None, is_mobile: bool = True):
+        """
+        Trigger Naukri to send an OTP to the user's phone/email.
+
+        Args:
+            username:   Phone number or email. Defaults to the username
+                        supplied at client construction.
+            is_mobile:  True for SMS OTP (default), False for email OTP.
+
+        Returns:
+            dict: Parsed JSON response from Naukri (contains flowId, etc.)
+
+        Raises:
+            NaukriAuthError: If the request fails.
+        """
+        target = username or self.username
+        res = self._send_otp_request(target, is_mobile)
+
+        if not res.ok:
+            logger.error("Send OTP failed: %s %s", res.status_code, res.text)
+            raise NaukriAuthError(f"Failed to send OTP ({res.status_code})")
+
+        try:
+            return res.json()
+        except Exception:
+            return {}
+
+
 
     @with_exponential_retry(label="get_form_key")
     def _fetch_profile_html(self):
