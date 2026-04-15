@@ -229,14 +229,6 @@ If `nkparam` is missing or invalid, the API returns `403 Forbidden`.
 
 We now generate `nkparam` directly via API logic (no browser required).
 
-- Reverse-engineered structure of the token
-- Recreated the encryption/signing flow
-- Dynamically generates valid `nkparam` per request
-
-This removes the dependency on Selenium and makes the system:
-- faster
-- more stable
-- fully scriptable
 
 ---
 
@@ -283,10 +275,9 @@ This project is intended for personal automation of your **own** Naukri account.
 
 ## 🛣️ Roadmap
 
-- [x] Reverse-engineer `nkparam` generation (no Selenium dependency)
 - [x] Complete job-search endpoint integration
 - [x] Complete one-click job-apply flow
-- [ ] Implement OTP/MFA login automation
+
 - [ ] Add async support (`httpx` / `aiohttp`)
 - [ ] CLI interface
 
