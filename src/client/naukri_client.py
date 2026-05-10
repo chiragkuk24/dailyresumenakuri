@@ -163,7 +163,7 @@ class NaukriLoginClient:
         payload = {
             "username": username,
             "token": otp,
-            "mobile": username,
+
             "flowId": "login",
             "isLoginByEmail": not is_mobile,
             "isLoginByMobile": is_mobile,
