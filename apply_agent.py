@@ -29,6 +29,7 @@ from src.client.naukri_client import NaukriLoginClient
 from src.client.job_client import NaukriJobClient
 from src.client.jop_classifier import JobFilterPipeline2
 from src.exceptions.exceptions import NaukriAuthError, NaukriParseError
+from src.utils.resume_profile import build_job_search_queries, extract_experience_years, extract_resume_keywords, read_resume_text
 from dotenv import load_dotenv
 from colorama import Fore, Back, Style, init
 import os
@@ -238,17 +239,17 @@ def print_summary(total_found: int, total_allowed: int, applied: int, skipped_ex
 
 def fetch_all_jobs(jc: NaukriJobClient) -> list:
 
+    resume_text = read_resume_text()
+    keywords = extract_resume_keywords(resume_text)
+    experience = extract_experience_years(resume_text)
     BQUERIES = [
-        # Tier 1: exact stack match
-        {"keyword": "Node.js backend developer", "location": "Bangalore"},
-        {"keyword": "Python Developer",          "location": ""},
-        {"keyword": "Node.js Developer",         "location": ""},
-        {"keyword": "python backend developer",  "location": "Pune"},
+        {"keyword": q, "location": "Bangalore"}
+        for q in build_job_search_queries(keywords, location="")
     ]
 
-    EXPERIENCE_LEVELS = [2]
+    EXPERIENCE_LEVELS = [experience]
     PAGES   = 1
-    JOB_AGE = 2
+    JOB_AGE = 7
 
     seen_ids = set()
     all_jobs = []

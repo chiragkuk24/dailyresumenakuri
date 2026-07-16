@@ -11,39 +11,13 @@ class JobFilterPipeline2:
 
     # ── your stack — AI scores against this ──────────────────────────────────
     MY_STACK = [
-        # ── Core backend ──────────────────────────────────────────────
-        "node", "node.js", "nodejs", "python", "javascript", "typescript",
-
-        # ── Frameworks ───────────────────────────────────────────────
-        "express", "express.js", "fastapi", "flask", "nestjs", "nest.js",
-        "django", "hapi", "koa",
-
-        # ── Databases ────────────────────────────────────────────────
-        "mongodb", "mongoose", "postgresql", "mysql", "redis", "sqlite",
-        "dynamodb", "firestore", "cassandra", "elasticsearch",
-        "sql", "nosql",
-
-        # ── Cloud & DevOps ───────────────────────────────────────────
-        "aws", "gcp", "azure", "docker", "kubernetes", "ci/cd",
-        "github actions", "jenkins", "terraform", "linux", "nginx",
-        "ec2", "s3", "lambda", "cloudwatch",
-
-        # ── APIs & Messaging ─────────────────────────────────────────
-        "rest", "rest api", "restful", "graphql", "websocket", "grpc",
-        "kafka", "rabbitmq", "celery", "bull", "socket.io",
-
-        # ── Automation & Scraping ────────────────────────────────────
-        "selenium", "playwright", "puppeteer", "beautifulsoup", "scrapy",
-        "web scraping", "automation", "n8n", "trigger.dev", "zapier",
-
-        # ── AI / LLM ─────────────────────────────────────────────────
-        "langchain", "openai", "llm", "rag", "vector db", "pinecone",
-        "weaviate", "chromadb", "huggingface", "embeddings", "genai",
-        "langsmith", "llamaindex",
-
-        # ── Tools & Practices ────────────────────────────────────────
-        "git", "github", "postman", "swagger", "jwt", "oauth",
-        "microservices", "system design", "api design",
+        "project management", "program management", "payments", "payment",
+        "fintech", "stakeholder management", "delivery management", "pmo",
+        "governance", "risk management", "compliance", "merchant acquiring",
+        "merchant services", "payment gateway", "wallet", "upi", "npci",
+        "product management", "operations", "agile", "scrum", "jira",
+        "client management", "vendor management", "digital transformation",
+        "business analysis", "cross-functional",
     ]
 
     # ── hard veto BEFORE ai — title only, zero ambiguity ────────────────────
@@ -57,7 +31,7 @@ class JobFilterPipeline2:
         "data scientist", "ml engineer", "data engineer", "intern", "internship",
         "engineering manager", "etl engineer", "prompt engineer",
         "analyst", "associate is engineer", "infra engineer",
-        "observability engineer","Manager"
+        "observability engineer"
     ]
 
 
@@ -78,13 +52,12 @@ class JobFilterPipeline2:
 
 
     SOFTWARE_KEYWORDS = {
-        "software", "developer", "engineer", "engineering",
-        "backend", "full stack", "fullstack",
-        "python", "node", "nodejs", "javascript", "typescript",
-        "django", "fastapi", "flask", "golang",
-        "devops", "cloud", "sre", "platform",
-        "api", "microservices", "infrastructure",
-        "tech lead", "sde", "swe", "mts", "programmer","react"
+        "project", "program", "manager", "management", "payments", "payment",
+        "fintech", "delivery", "stakeholder", "governance", "risk",
+        "compliance", "operations", "domain", "product", "merchant",
+        "wallet", "upi", "npci", "agile", "scrum", "pmo",
+        "business", "analysis", "digital", "transformation", "client",
+        "vendor", "strategy"
     }
 
     # if ANY of these appear in title → drop it
@@ -253,8 +226,8 @@ class JobFilterPipeline2:
     def experience_filter(self, jobs):
         return [
             j for j in jobs
-            if j.get("experience_min", 0) <= 4
-            and j.get("experience_max", 10) > 0
+            if j.get("experience_min", 0) >= 8
+            or j.get("experience_max", 10) >= 8
         ]
 
     # =========================================================
@@ -369,107 +342,60 @@ class JobFilterPipeline2:
 
 
         prompt2 = f"""
-You are a strict job filter for a backend developer. Score each job 0-100.
-Be precise — avoid clustering scores at 85 or 60. Use the full range.
+You are a strict job filter for a payments and project management hiring workflow. Score each job 0-100.
+Be precise — use the full range.
 
 CANDIDATE:
-- 2.3 years experience, backend-focused
-- Core stack: Node.js, Python, MongoDB, REST APIs, AWS
-- Also knows: Docker, CI/CD, automation, Selenium, Playwright, web scraping,
-  n8n, trigger.dev, LangChain, RAG, vector DBs, FastAPI, Flask, Express
-- Looking for: SDE1 / junior-mid backend or fullstack-backend roles
-- Prefers: startups, product companies, AI/automation work, remote/hybrid
-- Will NOT do: pure frontend, mobile, ML research, data science, DevOps-only
+- 12 years of experience in project/program management, delivery leadership, and stakeholder management.
+- Strong fit for payments, fintech, merchant services, digital transformation, and enterprise operations.
+- Looking for: Project Manager, Program Manager, Delivery Manager, Payments Domain Expert, PMO, or Governance roles.
+- Will NOT do: pure engineering-only roles, analytics-only roles, or unrelated operations jobs without payments or delivery relevance.
 
-SCORING RUBRIC — use the full range, not just 85/60:
-
-90-100 — perfect fit, apply immediately
-  Node.js OR Python is mandatory tag + backend/fullstack role or python/node js is in the title of the job
-  + exp 0-2 yrs + familiar supporting stack. Startup or product company.
-
-75-89 — strong fit, apply
-  Node.js or Python present (mandatory or optional) + backend lean
-  + exp 0-3 yrs. Maybe one unfamiliar tag but overall good match.
-
-55-74 — decent fit, apply with lower priority
-  Some stack overlap, role is fullstack but not backend-heavy,
-  or exp is 3-4 yrs, or company type unclear.
-
-30-54 — weak, skip unless nothing better
-  Familiar tech present but role is vague, frontend-leaning,
-  or exp mismatch 4-5 yrs.
-
-10-29 — poor match
-  Very little stack overlap, or role is clearly not backend and have java,  
-
+SCORING RUBRIC:
+90-100 — excellent fit
+  Explicit payments/fintech/project-management keywords + delivery/governance/stakeholder accountability + 8+ years experience.
+75-89 — strong fit
+  Project/program/operations roles with payments or fintech context, 8-12 years experience, good domain overlap.
+55-74 — decent fit
+  Related delivery or transformation roles with some payments overlap.
+30-54 — weak
+  Vague management roles with limited domain relevance.
 0-9 — do not apply
-   That contain Java  and dotnet  Zero stack overlap (Java+Spring only, PHP only, .NET only etc.)
-  OR walk-in / venue / intern role.
-
-RULES:
-- Node.js + MongoDB + 0-2yr backend → 90+, no exceptions
-- Java alongside Node/Python is fine — judge the full picture
-- Fullstack with Node backend → 65-80 depending on tag quality
-- "Software Engineer" with Python/Node tags → treat as backend, score 70-85
-- Pure React/Angular/Vue with no backend tags → 0-15
-- DevOps/infra-only with no app dev → 20-40
-- Intern roles → 0
-- Missing stack items is normal, don't over-penalise
-- Recency: 0-1 days old → mentally add 5 points
+  Pure engineering, pure analytics, or unrelated roles with no payments/project-management signal.
 
 Return ONLY valid JSON, no explanation outside it:
 {{
-  "0": {{"score": 92, "reason": "Node.js + MongoDB mandatory, 0-2yr, startup backend"}},
-  "1": {{"score": 0,  "reason": "Java/Spring only, zero overlap"}}
+  "0": {{"score": 92, "reason": "Payments project management role with 12+ years and stakeholder ownership"}},
+  "1": {{"score": 0,  "reason": "Engineering-only role with no payments or PM relevance"}}
 }}
 
 Jobs:
 {job_block}
 """
         prompt = f"""
-You are scoring job listings for a backend developer. Score each job 0-100.
+You are scoring job listings for a payments and project-management profile. Score each job 0-100.
 
 CANDIDATE:
-- 2 years experience, backend-focused
-- Core stack: Node.js, Python, MongoDB, REST APIs, AWS
-- Also knows: automation, Selenium, web scraping, Docker, CI/CD, n8n, trigger.dev,
-  Playwright, Postman, Git, LangChain, RAG, vector DBs
-- Looking for: SDE1 or junior-mid backend/fullstack-backend roles
-- Likes: startups, product companies, AI/automation work, remote/hybrid
+- 12 years experience in project/program management, delivery leadership, and payments domain work.
+- Strong domain affinity for fintech, merchant services, payment gateways, digital transformation, and governance.
+- Looking for: senior PM/program roles in payments, fintech, or enterprise operations.
 
 SCORING:
-
 85-100 — apply immediately
-  Node.js or Python is a mandatory tag, other tags are familiar stack,
-  exp is 0-3 yrs or not specified, role is backend or fullstack-backend.
-
-60-84 — good fit, apply
-  Node.js or Python present but not mandatory, or fullstack role with
-  backend-heavy tags, or slight exp mismatch (3-4 yrs).
-
-35-59 — decent, worth applying
-  Some stack overlap but role is vague or tags are mixed frontend/backend,
-  or exp is borderline 4-5 yrs.
-
-10-34 — weak match, skip unless desperate
-  Familiar tech present but frontend-dominated, or very little tag overlap.
-
+  Strong payments/fintech/project-management keywords, explicit delivery/governance responsibility, 8+ years experience.
+60-84 — good fit
+  Project or operations role with decent payments overlap or transformation context.
+35-59 — decent
+  Vague management or operations roles with partial relevance.
+10-34 — weak match
+  Limited domain overlap or mainly general operations.
 0 — do not apply
-  Tags are entirely foreign stack (Java+Spring+Hibernate only, PHP only, etc.)
-  with zero overlap with candidate's stack. OR walk-in / venue in title.
-
-COMMON SENSE RULES (these matter):
-- Java appearing alongside Node.js or Python is FINE — score on the whole picture.
-- "Fullstack" with Node backend is a GOOD fit (60-80 range).
-- Missing one or two stack items is normal — don't penalise heavily.
-- A job tagged [node.js, mongodb] with exp 0-2 yrs should score 85+.
-- A job tagged [java, spring, hibernate] with NO node/python should score 0-15.
-- Recency matters: jobs 0-1 days old get +5 bonus mentally.
+  Completely unrelated roles without payments, PM, or delivery relevance.
 
 Return ONLY valid JSON, no explanation outside it:
 {{
-  "0": {{"score": 85, "reason": "Node.js + MongoDB mandatory, 0-2yr, startup"}},
-  "1": {{"score": 0,  "reason": "Java/Spring only, zero stack overlap"}}
+  "0": {{"score": 88, "reason": "Payments PM role with stakeholder and delivery ownership"}},
+  "1": {{"score": 0,  "reason": "No payments or management relevance"}}
 }}
 
 Jobs:

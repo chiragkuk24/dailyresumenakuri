@@ -1,40 +1,56 @@
 
 from src.client.naukri_client import NaukriLoginClient
 from src.client.job_client import NaukriJobClient
-from dotenv import load_dotenv
+from src.utils.resume_profile import build_job_search_queries, extract_experience_years, read_resume_text, extract_resume_keywords, resolve_resume_path
+from dotenv import load_dotenv, dotenv_values
 from colorama import Fore, Style, init
 import os
+import time
+
+# Load .env file directly to avoid system env var conflicts
 load_dotenv()
-import time 
+env_values = dotenv_values('.env')
+username = os.getenv("USERNAME") or env_values.get("USERNAME")
+password = os.getenv("PASSWORD") or env_values.get("PASSWORD")
 
 init(autoreset=True)
 
 if __name__ == "__main__":
+    print(f"{Fore.CYAN}Using credentials from .env file{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}  USERNAME: {username}{Style.RESET_ALL}")
+    
     # ---------------------------------------------------------------
-    # Load credentials from .env file
-    # (NAUKRI_USERNAME and NAUKRI_PASSWORD must be set)
-    # ---------------------------------------------------------------
-    username = os.getenv("USERNAME")
-    password = os.getenv("PASSWORD")
-
-    # ---------------------------------------------------------------
-    # 1. Login — authenticates and stores session + bearer token
+    # 1. Create client
     # ---------------------------------------------------------------
     client = NaukriLoginClient(username, password)
+    
+    # ---------------------------------------------------------------
+    # 2. Login with password
+    # ---------------------------------------------------------------
+    print(f"{Fore.CYAN}Attempting password-based login...{Style.RESET_ALL}")
     client.login()
-    # # ---------------------------------------------------------------
-    # # 2. Resume upload — uploads a new PDF resume to your profile,provide the file path 
-    # # ---------------------------------------------------------------
-    # print(client.update_resume(r"C:/Users/HP/Downloads/my_resume2.pdf"))
+    print(f"{Fore.GREEN}✓ Login successful!{Style.RESET_ALL}")
+    # ---------------------------------------------------------------
+    # 2. Resume upload — uploads a new PDF resume to your profile
+    # ---------------------------------------------------------------
+    resume_path = resolve_resume_path(r"D:\CNH\Naukri\Chirag")
+    if resume_path and os.path.exists(resume_path):
+        print(f"{Fore.CYAN}Uploading resume from: {resume_path}{Style.RESET_ALL}")
+        print(client.update_resume(resume_path))
+    else:
+        print(f"{Fore.YELLOW}Resume file not found at the requested path.{Style.RESET_ALL}")
 
     # # ---------------------------------------------------------------
     # # 3. Profile update — update headline and summary independently
     # #    Both fields are optional, pass only what you want to change
     # # ---------------------------------------------------------------
-    # print(client.update_profile(headline="Software Engineer with 2.3 years of experience in backend development using Node.js, Python, AWS, SQL, and NoSQL."
+    # print(client.update_profile(
+    #     headline="Project Management & Payments Domain Expert | 12+ Years | Delivery, Governance, Stakeholder Management"
     # ))
 
-    # print(client.update_profile(summary="this is my summary"))
+    # print(client.update_profile(
+    #     summary="Experienced project and program management professional with 12+ years leading payments, fintech, and digital transformation initiatives."
+    # ))
 
     # # ---------------------------------------------------------------
     # # 4. Misc — fetch profile ID and form key (mostly for debugging)
@@ -55,13 +71,24 @@ if __name__ == "__main__":
 
 
     
-    print("Searching jobs...")    
-    jobs = jc.search_jobs(keyword="Node.js developer", location="Hyderabad", experience=2)
+    print("Searching jobs...")
+    resume_text = read_resume_text()
+    keywords = extract_resume_keywords(resume_text)
+    experience = extract_experience_years(resume_text)
+    target_queries = build_job_search_queries(keywords, location="Bangalore")
+
+    jobs = []
+    for query in target_queries:
+        keyword = query.replace(" in Bangalore", "")
+        jobs = jc.search_jobs(keyword=keyword, location="Bangalore", experience=experience)
+        if jobs:
+            print(f"{Fore.GREEN}Found {len(jobs)} jobs for '{keyword}'{Style.RESET_ALL}")
+            break
 
     if not jobs:
-        print(f"{Fore.YELLOW}  No jobs found.{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}  No jobs found for the current resume-driven profile.{Style.RESET_ALL}")
     else:
-        print(f"{Fore.GREEN}Found {len(jobs)} jobs{Style.RESET_ALL}")
+        print(f"{Fore.GREEN}Using {len(jobs)} jobs for the current resume-driven profile{Style.RESET_ALL}")
 
         for job in jobs:
             print(f"\n{Fore.CYAN}{'─'*50}{Style.RESET_ALL}")
